@@ -235,10 +235,15 @@ const formData = reactive({
 watch(element, (el) => {
   if (el) {
     Object.keys(formData).forEach(key => {
-      if (el[key] !== undefined) formData[key] = el[key]
+      if (el[key] !== undefined) {
+        // cells 为嵌套结构，深拷贝一份再交给表单，避免面板与元件（或另一份副本）共享引用
+        formData[key] = key === 'cells' ? cloneCells(el[key]) : el[key]
+      }
     })
   }
 }, { immediate: true, deep: true })
+
+const cloneCells = (cells) => JSON.parse(JSON.stringify(cells || {}))
 
 const updateProp = (key) => {
   if (element.value) {

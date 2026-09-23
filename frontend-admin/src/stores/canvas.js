@@ -3,6 +3,12 @@ import { ref, computed } from 'vue'
 
 const MM_TO_DOT = 8
 
+// 元件数据均为 JSON 安全类型；深拷贝以切断新元件与元件库模板/源元件之间的嵌套引用
+function cloneElementData(value) {
+  if (value === null || value === undefined) return {}
+  return JSON.parse(JSON.stringify(value))
+}
+
 export const useCanvasStore = defineStore('canvas', () => {
   const canvasWidth = ref(80)
   const canvasHeight = ref(60)
@@ -35,16 +41,18 @@ export const useCanvasStore = defineStore('canvas', () => {
 
   function addElement(element) {
     const id = `element_${++elementIdCounter}`
+    // 深拷贝传入数据，避免新元件与元件库模板或被复制元件共享嵌套对象（如表格 cells）
+    const source = cloneElementData(element)
     const newElement = {
+      ...source,
       id,
-      ...element,
-      x: element.x || 10,
-      y: element.y || 10,
-      width: element.width || 100,
-      height: element.height || 30,
-      rotation: element.rotation || 0,
-      locked: false,
-      visible: true
+      x: source.x ?? 10,
+      y: source.y ?? 10,
+      width: source.width ?? 100,
+      height: source.height ?? 30,
+      rotation: source.rotation ?? 0,
+      locked: source.locked ?? false,
+      visible: source.visible ?? true
     }
     elements.value.push(newElement)
     selectElement(id)
@@ -147,10 +155,11 @@ export const useCanvasStore = defineStore('canvas', () => {
     const element = elements.value.find(el => el.id === id)
     if (!element) return
 
+    // addElement 内部会深拷贝，新元件拥有独立的内部数据（如表格 cells）
     const newElement = {
       ...element,
-      x: Math.min(element.x + 20, canvasPixelWidth.value - element.width),
-      y: Math.min(element.y + 20, canvasPixelHeight.value - element.height)
+      x: Math.max(0, Math.min(element.x + 20, canvasPixelWidth.value - element.width)),
+      y: Math.max(0, Math.min(element.y + 20, canvasPixelHeight.value - element.height))
     }
     delete newElement.id
     return addElement(newElement)
