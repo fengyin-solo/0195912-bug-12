@@ -3,6 +3,12 @@ import { ref, computed } from 'vue'
 
 const MM_TO_DOT = 8
 
+// 元件数据为纯数据（数字/字符串/布尔/普通对象），用 JSON 深拷贝即可，
+// 避免新元件与元件库默认数据或被复制元件共享内部引用（如表格 cells）
+function cloneElementData(data) {
+  return JSON.parse(JSON.stringify(data))
+}
+
 export const useCanvasStore = defineStore('canvas', () => {
   const canvasWidth = ref(80)
   const canvasHeight = ref(60)
@@ -35,14 +41,17 @@ export const useCanvasStore = defineStore('canvas', () => {
 
   function addElement(element) {
     const id = `element_${++elementIdCounter}`
+    // 深拷贝传入数据，确保新元件拥有独立的内部数据
+    const data = cloneElementData(element)
     const newElement = {
       id,
-      ...element,
-      x: element.x || 10,
-      y: element.y || 10,
-      width: element.width || 100,
-      height: element.height || 30,
-      rotation: element.rotation || 0,
+      ...data,
+      // 初始值用 ?? 判空：0 是合法值（贴边放置），不能被 || 替换成默认值
+      x: data.x ?? 10,
+      y: data.y ?? 10,
+      width: data.width ?? 100,
+      height: data.height ?? 30,
+      rotation: data.rotation ?? 0,
       locked: false,
       visible: true
     }
@@ -149,8 +158,8 @@ export const useCanvasStore = defineStore('canvas', () => {
 
     const newElement = {
       ...element,
-      x: Math.min(element.x + 20, canvasPixelWidth.value - element.width),
-      y: Math.min(element.y + 20, canvasPixelHeight.value - element.height)
+      x: Math.max(0, Math.min(element.x + 20, canvasPixelWidth.value - element.width)),
+      y: Math.max(0, Math.min(element.y + 20, canvasPixelHeight.value - element.height))
     }
     delete newElement.id
     return addElement(newElement)
